@@ -63,7 +63,7 @@ def extract_date(log_line):
     return match.group(1) if match else None
 
 def extract_status_code(log_line):
-    match = re.search(r'"[A-Z]+ .*?" (\d{3})', log_line)
+    match = re.search(r'"[A-Z]+ [^"]+" (\d{3})', log_line)
     return match.group(1) if match else None
 
 def detect_llm_bots(df):
