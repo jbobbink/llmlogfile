@@ -6,7 +6,7 @@ import gzip
 
 # List of known LLM bots (extendable)
 LLM_BOTS = [
-    'GPTBot', 'ClaudeBot', 'Claude-User', 'Claude-SearchBot', 'CCBot', 'Google-Extended', 'Applebot-Extended', 'Facebookbot', 'Meta-ExternalAgent', 'Meta-ExternalFetcher', 'diffbot', 'PerplexityBot', 'Perplexity‑User', 'Omgili', 'Omgilibot', 'webzio-extended', 'ImagesiftBot', 'Bytespider', 'TikTokSpider', 'Amazonbot', 'Youbot', 'SemrushBot-OCOB', 'Petalbot', 'VelenPublicWebCrawler', 'TurnitinBot', 'Timpibot', 'OAI-SearchBot', 'ICC-Crawler', 'AI2Bot', 'AI2Bot-Dolma', 'DataForSeoBot', 'AwarioBot', 'AwarioSmartBot', 'AwarioRssBot', 'Google-CloudVertexBot', 'PanguBot', 'Kangaroo Bot', 'Sentibot', 'img2dataset', 'Meltwater', 'Seekr', 'peer39_crawler', 'cohere-ai', 'cohere-training-data-crawler', 'DuckAssistBot', 'Scrapy', 'Cotoyogi', 'aiHitBot', 'Factset_spyderbot', 'FirecrawlAgent', 'GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'ChatGPT-User/2.0', 'anthropic-ai', 'ClaudeBot', 'claude-web', 'PerplexityBot', 'Perplexity-User', 'Google-Extended Disallow: /', 'BingBot', 'Amazonbot', 'Applebot', 'Applebot-Extended', 'FacebookBot', 'meta-externalagent', 'LinkedInBot', 'Bytespider', 'DuckAssistBot', 'cohere-ai', 'AI2Bot', 'CCBot', 'Diffbot', 'omgili', 'TimpiBot', 'YouBot', 'MistralAI-User'
+    'GPTBot', 'ClaudeBot', 'Claude-User', 'Claude-SearchBot', 'CCBot', 'Google-Extended', 'Applebot-Extended', 'Facebookbot', 'Meta-ExternalAgent', 'Meta-ExternalFetcher', 'diffbot', 'PerplexityBot', 'Perplexity‑User', 'Omgili', 'Omgilibot', 'webzio-extended', 'ImagesiftBot', 'Bytespider', 'TikTokSpider', 'Amazonbot', 'Youbot', 'SemrushBot-OCOB', 'Petalbot', 'VelenPublicWebCrawler', 'TurnitinBot', 'Timpibot', 'OAI-SearchBot', 'ICC-Crawler', 'AI2Bot', 'AI2Bot-Dolma', 'DataForSeoBot', 'AwarioBot', 'AwarioSmartBot', 'AwarioRssBot', 'Google-CloudVertexBot', 'PanguBot', 'Kangaroo Bot', 'Sentibot', 'img2dataset', 'Meltwater', 'Seekr', 'peer39_crawler', 'cohere-ai', 'cohere-training-data-crawler', 'DuckAssistBot', 'Scrapy', 'Cotoyogi', 'aiHitBot', 'Factset_spyderbot', 'FirecrawlAgent', 'GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'anthropic-ai', 'ClaudeBot', 'claude-web', 'PerplexityBot', 'Perplexity-User', 'Google-Extended', 'BingBot', 'Amazonbot', 'Applebot', 'Applebot-Extended', 'FacebookBot', 'meta-externalagent', 'LinkedInBot', 'Bytespider', 'DuckAssistBot', 'cohere-ai', 'AI2Bot', 'CCBot', 'Diffbot', 'omgili', 'TimpiBot', 'YouBot', 'MistralAI-User'
 ]
 
 @st.cache_data
@@ -19,13 +19,15 @@ def parse_log_file(uploaded_file):
         lines = stringio.readlines()
 
     log_entries = []
+    status_codes = []
     for line in lines:
+        status_code = extract_status_code(line)
         user_agent = extract_user_agent(line)
         ip = extract_ip(line)
         url = extract_url(line)
         date = extract_date(line)
         if user_agent:
-            log_entries.append({"raw": line, "user_agent": user_agent, "ip": ip, "url": url, "date": date})
+            log_entries.append({"raw": line, "user_agent": user_agent, "ip": ip, "url": url, "date": date, "status": status_code})
     return pd.DataFrame(log_entries)
 
 def extract_user_agent(log_line):
@@ -51,6 +53,10 @@ def extract_date(log_line):
     match = re.search(r'\[(\d{2}/[A-Za-z]{3}/\d{4})', log_line)
     return match.group(1) if match else None
 
+def extract_status_code(log_line):
+    matches = re.findall(r'\".*?\"\\s(\\d{3})\\s', log_line)
+    return matches[0] if matches else None
+
 def detect_llm_bots(df):
     df['llm_name'] = df['user_agent'].apply(lambda ua: next((bot for bot in LLM_BOTS if bot.lower() in ua.lower()), None))
     df['llm_bot'] = df['llm_name'].notnull()
@@ -75,11 +81,15 @@ if uploaded_file:
     st.dataframe(df_llm['llm_name'].value_counts().reset_index().rename(columns={'index': 'LLM Bot', 'llm_name': 'Count'}))
 
     st.subheader("Counts per Requested URL")
-    llm_filter = st.selectbox("Filter by LLM Bot", options=["All"] + sorted(df_llm['llm_name'].unique()))
+    llm_filter = st.selectbox("Filter by LLM Bot", options=["All"] + sorted(df_llm['llm_name'].dropna().unique()))
+    status_filter = st.selectbox("Filter by HTTP Status Code", options=["All"] + sorted(df_llm['status'].dropna().unique()))
+
+    filtered_df = df_llm.copy()
     if llm_filter != "All":
-        filtered_df = df_llm[df_llm['llm_name'] == llm_filter]
-    else:
-        filtered_df = df_llm
+        filtered_df = filtered_df[filtered_df['llm_name'] == llm_filter]
+    if status_filter != "All":
+        filtered_df = filtered_df[filtered_df['status'] == status_filter]
+
     url_counts = filtered_df['url'].value_counts().reset_index().rename(columns={'index': 'URL', 'url': 'Count'})
     st.dataframe(url_counts)
 
@@ -95,6 +105,14 @@ if uploaded_file:
         st.dataframe(llms_requests[['llm_name', 'ip', 'url', 'date', 'user_agent']])
     else:
         st.info("No LLM requests for 'llms.txt' were detected.")
+
+    st.subheader("HTTP Status Code Counts")
+    status_llm_filter = st.selectbox("Filter status codes by LLM Bot", options=["All"] + sorted(df_llm['llm_name'].dropna().unique()), key="status_llm_filter")
+    status_df = df_llm.copy()
+    if status_llm_filter != "All":
+        status_df = status_df[status_df['llm_name'] == status_llm_filter]
+    status_counts = status_df['status'].value_counts().reset_index().rename(columns={'index': 'HTTP Status Code', 'status': 'Count'})
+    st.dataframe(status_counts)
 
     st.subheader("Request Volume per Day")
     llm_filter_chart = st.selectbox("Filter chart by LLM Bot", options=["All"] + sorted(df_llm['llm_name'].unique()), key="chart_filter")
