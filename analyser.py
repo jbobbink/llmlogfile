@@ -3,7 +3,6 @@ import pandas as pd
 import re
 from io import StringIO, BytesIO
 import gzip
-import matplotlib.pyplot as plt
 
 # List of known LLM bots (extendable)
 LLM_BOTS = [
@@ -107,15 +106,9 @@ if uploaded_file:
         chart_df = df_llm
 
     chart_df['date'] = pd.to_datetime(chart_df['date'], format='%d/%b/%Y', errors='coerce')
-    daily_counts = chart_df.groupby('date').size().reset_index(name='Count')
+    daily_counts = chart_df.groupby('date').size().reset_index(name='Count').set_index('date')
 
-    fig, ax = plt.subplots()
-    ax.plot(daily_counts['date'], daily_counts['Count'], marker='o')
-    ax.set_title(f"Requests per Day ({llm_filter_chart})")
-    ax.set_xlabel("Date")
-    ax.set_ylabel("Number of Requests")
-    ax.grid(True)
-    st.pyplot(fig)
+    st.line_chart(daily_counts)
 
     csv = df_llm.to_csv(index=False).encode('utf-8')
     st.download_button("Download LLM Bot Entries as CSV", data=csv, file_name="llm_bot_hits.csv", mime="text/csv")
