@@ -3,6 +3,7 @@ import pandas as pd
 import re
 from io import StringIO, BytesIO
 import gzip
+import matplotlib.pyplot as plt
 
 # List of known LLM bots (extendable)
 LLM_BOTS = [
@@ -19,14 +20,15 @@ def parse_log_file(uploaded_file):
     else:
         stringio = StringIO(uploaded_file.getvalue().decode("utf-8", errors='ignore'))
         lines = stringio.readlines()
-    
+
     log_entries = []
     for line in lines:
         user_agent = extract_user_agent(line)
         ip = extract_ip(line)
         url = extract_url(line)
+        date = extract_date(line)
         if user_agent:
-            log_entries.append({"raw": line, "user_agent": user_agent, "ip": ip, "url": url})
+            log_entries.append({"raw": line, "user_agent": user_agent, "ip": ip, "url": url, "date": date})
     return pd.DataFrame(log_entries)
 
 def extract_user_agent(log_line):
@@ -48,6 +50,10 @@ def extract_url(log_line):
             return parts[1]  # The requested path (e.g., /wp-login.php)
     return None
 
+def extract_date(log_line):
+    match = re.search(r'\[(\d{2}/[A-Za-z]{3}/\d{4})', log_line)
+    return match.group(1) if match else None
+
 def detect_llm_bots(df):
     df['llm_name'] = df['user_agent'].apply(lambda ua: next((bot for bot in LLM_BOTS if bot.lower() in ua.lower()), None))
     df['llm_bot'] = df['llm_name'].notnull()
@@ -66,7 +72,7 @@ if uploaded_file:
     df_llm = detect_llm_bots(df_logs)
     st.write(f"Found {len(df_llm)} entries from known LLM bots.")
 
-    st.dataframe(df_llm[['llm_name', 'user_agent', 'ip', 'url', 'raw']])
+    st.dataframe(df_llm[['llm_name', 'user_agent', 'ip', 'url', 'date', 'raw']])
 
     st.subheader("Counts per LLM")
     st.dataframe(df_llm['llm_name'].value_counts().reset_index().rename(columns={'index': 'LLM Bot', 'llm_name': 'Count'}))
@@ -84,6 +90,32 @@ if uploaded_file:
     ip_per_llm = df_llm.groupby('llm_name')['ip'].unique().reset_index()
     ip_per_llm['ip'] = ip_per_llm['ip'].apply(lambda x: ', '.join(x))
     st.dataframe(ip_per_llm.rename(columns={'llm_name': 'LLM Bot', 'ip': 'IPs'}))
+
+    st.subheader("Did any LLM request llms.txt?")
+    llms_requests = df_llm[df_llm['url'].str.contains("llms.txt", case=False, na=False)]
+    if not llms_requests.empty:
+        st.success(f"{len(llms_requests)} LLM requests for 'llms.txt' detected:")
+        st.dataframe(llms_requests[['llm_name', 'ip', 'url', 'date', 'user_agent']])
+    else:
+        st.info("No LLM requests for 'llms.txt' were detected.")
+
+    st.subheader("Request Volume per Day")
+    llm_filter_chart = st.selectbox("Filter chart by LLM Bot", options=["All"] + sorted(df_llm['llm_name'].unique()), key="chart_filter")
+    if llm_filter_chart != "All":
+        chart_df = df_llm[df_llm['llm_name'] == llm_filter_chart]
+    else:
+        chart_df = df_llm
+
+    chart_df['date'] = pd.to_datetime(chart_df['date'], format='%d/%b/%Y', errors='coerce')
+    daily_counts = chart_df.groupby('date').size().reset_index(name='Count')
+
+    fig, ax = plt.subplots()
+    ax.plot(daily_counts['date'], daily_counts['Count'], marker='o')
+    ax.set_title(f"Requests per Day ({llm_filter_chart})")
+    ax.set_xlabel("Date")
+    ax.set_ylabel("Number of Requests")
+    ax.grid(True)
+    st.pyplot(fig)
 
     csv = df_llm.to_csv(index=False).encode('utf-8')
     st.download_button("Download LLM Bot Entries as CSV", data=csv, file_name="llm_bot_hits.csv", mime="text/csv")
