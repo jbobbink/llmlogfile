@@ -41,10 +41,11 @@ def extract_ip(log_line):
 
 def extract_url(log_line):
     matches = re.findall(r'"(.*?)"', log_line)
-    if len(matches) >= 2:
-        request_parts = matches[1].split()
-        if len(request_parts) >= 2:
-            return request_parts[1]
+    if len(matches) >= 1:
+        request = matches[0]  # First quoted string usually contains GET /path HTTP/1.1
+        parts = request.split()
+        if len(parts) >= 2:
+            return parts[1]  # The requested path (e.g., /wp-login.php)
     return None
 
 def detect_llm_bots(df):
