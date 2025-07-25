@@ -23,10 +23,11 @@ def parse_log_file(uploaded_file):
     log_entries = []
     for line in lines:
         user_agent = extract_user_agent(line)
+        ip = extract_ip(line)
+        url = extract_url(line)
         if user_agent:
-            log_entries.append({"raw": line, "user_agent": user_agent})
+            log_entries.append({"raw": line, "user_agent": user_agent, "ip": ip, "url": url})
     return pd.DataFrame(log_entries)
-
 
 def extract_user_agent(log_line):
     matches = re.findall(r'"(.*?)"', log_line)
@@ -34,11 +35,22 @@ def extract_user_agent(log_line):
         return matches[-1]  # user-agent is often the last quoted string
     return None
 
+def extract_ip(log_line):
+    match = re.match(r'^(\S+)', log_line)
+    return match.group(1) if match else None
+
+def extract_url(log_line):
+    matches = re.findall(r'"(.*?)"', log_line)
+    if len(matches) >= 2:
+        request_parts = matches[1].split()
+        if len(request_parts) >= 2:
+            return request_parts[1]
+    return None
 
 def detect_llm_bots(df):
-    df['llm_bot'] = df['user_agent'].apply(lambda ua: any(bot.lower() in ua.lower() for bot in LLM_BOTS))
+    df['llm_name'] = df['user_agent'].apply(lambda ua: next((bot for bot in LLM_BOTS if bot.lower() in ua.lower()), None))
+    df['llm_bot'] = df['llm_name'].notnull()
     return df[df['llm_bot'] == True]
-
 
 # Streamlit UI
 st.title("LLM Bot Log Analyzer")
@@ -53,7 +65,18 @@ if uploaded_file:
     df_llm = detect_llm_bots(df_logs)
     st.write(f"Found {len(df_llm)} entries from known LLM bots.")
 
-    st.dataframe(df_llm[['user_agent', 'raw']])
+    st.dataframe(df_llm[['llm_name', 'user_agent', 'ip', 'url', 'raw']])
+
+    st.subheader("Counts per LLM")
+    st.dataframe(df_llm['llm_name'].value_counts().reset_index().rename(columns={'index': 'LLM Bot', 'llm_name': 'Count'}))
+
+    st.subheader("Counts per Requested URL")
+    st.dataframe(df_llm['url'].value_counts().reset_index().rename(columns={'index': 'URL', 'url': 'Count'}))
+
+    st.subheader("List of IPs per LLM")
+    ip_per_llm = df_llm.groupby('llm_name')['ip'].unique().reset_index()
+    ip_per_llm['ip'] = ip_per_llm['ip'].apply(lambda x: ', '.join(x))
+    st.dataframe(ip_per_llm.rename(columns={'llm_name': 'LLM Bot', 'ip': 'IPs'}))
 
     csv = df_llm.to_csv(index=False).encode('utf-8')
     st.download_button("Download LLM Bot Entries as CSV", data=csv, file_name="llm_bot_hits.csv", mime="text/csv")
