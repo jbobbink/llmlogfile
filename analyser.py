@@ -91,7 +91,7 @@ if uploaded_file:
     st.dataframe(ip_per_llm.rename(columns={'llm_name': 'LLM Bot', 'ip': 'IPs'}))
 
     st.subheader("Did any LLM request llms.txt?")
-    llms_requests = df_llm[df_llm['url'].str.contains("llms.txt", case=False, na=False)]
+    llms_requests = df_llm[df_llm['url'].str.lower() == '/llms.txt']
     if not llms_requests.empty:
         st.success(f"{len(llms_requests)} LLM requests for 'llms.txt' detected:")
         st.dataframe(llms_requests[['llm_name', 'ip', 'url', 'date', 'user_agent']])
