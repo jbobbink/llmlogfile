@@ -6,9 +6,7 @@ import gzip
 
 # List of known LLM bots (extendable)
 LLM_BOTS = [
-    'ChatGPT-User', 'GPTBot', 'ClaudeBot', 'Google-Extended', 'CCBot', 'facebookexternalhit',
-    'Anthropic', 'AI21', 'Bard', 'OpenAI', 'PerplexityBot', 'youchat', 'cohere', 'mistral',
-    'Sogou web spider', 'Bytespider', 'Amazonbot'
+    'GPTBot', 'ClaudeBot', 'Claude-User', 'Claude-SearchBot', 'CCBot', 'Google-Extended', 'Applebot-Extended', 'Facebookbot', 'Meta-ExternalAgent', 'Meta-ExternalFetcher', 'diffbot', 'PerplexityBot', 'Perplexity‑User', 'Omgili', 'Omgilibot', 'webzio-extended', 'ImagesiftBot', 'Bytespider', 'TikTokSpider', 'Amazonbot', 'Youbot', 'SemrushBot-OCOB', 'Petalbot', 'VelenPublicWebCrawler', 'TurnitinBot', 'Timpibot', 'OAI-SearchBot', 'ICC-Crawler', 'AI2Bot', 'AI2Bot-Dolma', 'DataForSeoBot', 'AwarioBot', 'AwarioSmartBot', 'AwarioRssBot', 'Google-CloudVertexBot', 'PanguBot', 'Kangaroo Bot', 'Sentibot', 'img2dataset', 'Meltwater', 'Seekr', 'peer39_crawler', 'cohere-ai', 'cohere-training-data-crawler', 'DuckAssistBot', 'Scrapy', 'Cotoyogi', 'aiHitBot', 'Factset_spyderbot', 'FirecrawlAgent', 'GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'ChatGPT-User/2.0', 'anthropic-ai', 'ClaudeBot', 'claude-web', 'PerplexityBot', 'Perplexity-User', 'Google-Extended Disallow: /', 'BingBot', 'Amazonbot', 'Applebot', 'Applebot-Extended', 'FacebookBot', 'meta-externalagent', 'LinkedInBot', 'Bytespider', 'DuckAssistBot', 'cohere-ai', 'AI2Bot', 'CCBot', 'Diffbot', 'omgili', 'TimpiBot', 'YouBot', 'MistralAI-User'
 ]
 
 @st.cache_data
