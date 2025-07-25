@@ -72,7 +72,13 @@ if uploaded_file:
     st.dataframe(df_llm['llm_name'].value_counts().reset_index().rename(columns={'index': 'LLM Bot', 'llm_name': 'Count'}))
 
     st.subheader("Counts per Requested URL")
-    st.dataframe(df_llm['url'].value_counts().reset_index().rename(columns={'index': 'URL', 'url': 'Count'}))
+    llm_filter = st.selectbox("Filter by LLM Bot", options=["All"] + sorted(df_llm['llm_name'].unique()))
+    if llm_filter != "All":
+        filtered_df = df_llm[df_llm['llm_name'] == llm_filter]
+    else:
+        filtered_df = df_llm
+    url_counts = filtered_df['url'].value_counts().reset_index().rename(columns={'index': 'URL', 'url': 'Count'})
+    st.dataframe(url_counts)
 
     st.subheader("List of IPs per LLM")
     ip_per_llm = df_llm.groupby('llm_name')['ip'].unique().reset_index()
