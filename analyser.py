@@ -63,8 +63,8 @@ def extract_date(log_line):
     return match.group(1) if match else None
 
 def extract_status_code(log_line):
-    matches = re.findall(r'\".*?\"\s(\d{3})\s', log_line)
-    return matches[0] if matches else None
+    match = re.search(r'"[A-Z]+ .*?" (\d{3})', log_line)
+    return match.group(1) if match else None
 
 def detect_llm_bots(df):
     df['llm_name'] = df['user_agent'].apply(lambda ua: next((bot for bot in LLM_BOTS if bot in ua.lower()), None))
