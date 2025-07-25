@@ -63,7 +63,7 @@ def extract_date(log_line):
     return match.group(1) if match else None
 
 def extract_status_code(log_line):
-    match = re.search(r'"\S+ \S+ \S+"\s+(\d{3})\b', log_line)
+    match = re.search(r'"\S+ \S+ \S+"\s+(\d{3})\s', log_line)
     return match.group(1) if match else None
 
 def detect_llm_bots(df):
@@ -89,9 +89,13 @@ if uploaded_file:
     st.subheader("Counts per LLM")
     st.dataframe(df_llm['llm_name'].value_counts().reset_index().rename(columns={'index': 'LLM Bot', 'llm_name': 'Count'}))
 
+    # Precompute unique values for filters
+    unique_llms = sorted(df_llm['llm_name'].dropna().unique())
+    unique_statuses = sorted(df_llm['status'].dropna().unique())
+
     st.subheader("Counts per Requested URL")
-    llm_filter = st.selectbox("Filter by LLM Bot", options=["All"] + sorted(df_llm['llm_name'].dropna().unique()))
-    status_filter = st.selectbox("Filter by HTTP Status Code", options=["All"] + sorted(df_llm['status'].dropna().unique()))
+    llm_filter = st.selectbox("Filter by LLM Bot", options=["All"] + unique_llms)
+    status_filter = st.selectbox("Filter by HTTP Status Code", options=["All"] + unique_statuses)
 
     filtered_df = df_llm.copy()
     if llm_filter != "All":
@@ -116,7 +120,7 @@ if uploaded_file:
         st.info("No LLM requests for 'llms.txt' were detected.")
 
     st.subheader("HTTP Status Code Counts")
-    status_llm_filter = st.selectbox("Filter status codes by LLM Bot", options=["All"] + sorted(df_llm['llm_name'].dropna().unique()), key="status_llm_filter")
+    status_llm_filter = st.selectbox("Filter status codes by LLM Bot", options=["All"] + unique_llms, key="status_llm_filter")
     status_df = df_llm.copy()
     if status_llm_filter != "All":
         status_df = status_df[status_df['llm_name'] == status_llm_filter]
@@ -124,7 +128,7 @@ if uploaded_file:
     st.dataframe(status_counts)
 
     st.subheader("Request Volume per Day")
-    llm_filter_chart = st.selectbox("Filter chart by LLM Bot", options=["All"] + sorted(df_llm['llm_name'].unique()), key="chart_filter")
+    llm_filter_chart = st.selectbox("Filter chart by LLM Bot", options=["All"] + unique_llms, key="chart_filter")
     if llm_filter_chart != "All":
         chart_df = df_llm[df_llm['llm_name'] == llm_filter_chart].copy()
     else:
