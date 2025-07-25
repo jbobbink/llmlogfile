@@ -63,8 +63,13 @@ def extract_date(log_line):
     return match.group(1) if match else None
 
 def extract_status_code(log_line):
-    match = re.search(r'\s(\d{3})\s', log_line)
-    return match.group(1) if match else None
+    parts = log_line.split('"')
+    if len(parts) >= 3:
+        rest = parts[2].strip()
+        status = rest.split()[0]
+        if status.isdigit() and len(status) == 3:
+            return status
+    return None
 
 def detect_llm_bots(df):
     df['llm_name'] = df['user_agent'].apply(lambda ua: next((bot for bot in LLM_BOTS if bot in ua.lower()), None))
